@@ -5,7 +5,7 @@
 // @description danbooru 偏好推送
 // @include     https://danbooru.donmai.us/
 // @include     https://danbooru.donmai.us/posts/*
-// @version     1.0
+// @version     1.1
 // @grant       GM_xmlhttpRequest
 // @grant         GM_registerMenuCommand
 // @grant         GM_setValue
@@ -16,7 +16,7 @@
 // @license     CC Attribution-ShareAlike 4.0 International; http://creativecommons.org/licenses/by-sa/4.0/
 // ==/UserScript==
 var config = {
-    'debug': true
+    'debug': false
 }
 var debug = config.debug ? console.log.bind(console)  : function () {
 };
@@ -32,13 +32,13 @@ var FavTags;
 var VisitLinks;
 var BlackTags;
 var DivCount;
+var TotalPage;
 class Gallery{
-    constructor(href,other) {
+    constructor(href,other=null) {
         this.method = 'GET';
         this.url = href;
         this.headers = {
             'User-agent': 'Mozilla/4.0 (compatible) Greasemonkey',
-            'Accept': 'application/atom+xml,application/xml,text/xml',
             'Referer': window.location.href,
         };
         this.charset = 'text/plain;charset=utf8';
@@ -48,14 +48,13 @@ class Gallery{
 class GalleryPage{
     constructor(keyword,other=null) {
         this.method = 'GET';
-        this.url = "https://"+hostname+"/post/"+keyword;
+        this.url = "https://"+hostname+"/posts?page="+keyword;
         this.headers = {
             'User-agent': 'Mozilla/4.0 (compatible) Greasemonkey',
-            'Accept': 'application/atom+xml,application/xml,text/xml',
             'Referer': window.location.href,
         };
         this.charset = 'text/plain;charset=utf8';
-        this.other,other;
+        this.other=other;
     }
 }
 
@@ -72,15 +71,18 @@ function init() {
     debug("init");
     VisitTags={};
     VisitLinks=[];
-    BlackTags="";
     try{
         VisitTags=JSON.parse(GM_getValue("VisitTags"));
         VisitLinks=GM_getValue("VisitLinks").split(",");
-        BlackTags=GM_getValue("BlackTags");
+            BlackTags=GM_getValue("BlackTags");
     }catch(e){
         debug("Not VisitTags.");
     }
-debug("BlackTags: "+BlackTags);
+    if(BlackTags==undefined){
+        BlackTags="";
+
+    }
+    debug("BlackTags: "+BlackTags);
     if(window.location.href.includes("https://danbooru.donmai.us/posts/")){
         if(!VisitLinks.includes(window.location.href)){
             VisitLinks.push(window.location.href);
@@ -134,85 +136,49 @@ function  ShowRecommand() {
     CreateStyle();
     hostname=getLocation(window.location.href).hostname;
     ContentPane=document.querySelector("#posts-container");
-    ContentPaneChildNum=ContentPane.childNodes.length;
+    var articles=ContentPane.querySelectorAll("article");
+    TotalPage=parseInt(articles[0].getAttribute("id").split("_")[1]);
+    ContentPaneChildNum=articles.length;
+    debug("ContentPaneChildNum: " +ContentPaneChildNum);
     FilledChildNum=0;
     //clear ContentPane
     while (ContentPane.firstChild) {
         ContentPane.removeChild(ContentPane.firstChild);
     }
-    FillPane();
+    FillPane(TotalPage);
 }
 
 function FillPane(TotalPage){
-    var table=document.querySelector("posts-container");
-    var tds=table.querySelectorAll("article");
-    var TotalPage=parseInt(tds[DivCount].firstChild.getAttribute("id").split("_")[1]);
-            var RandomPage = Math.floor(Math.random() * (TotalPage+1 - 0));
-            ObjectGalleryPage=new GalleryPage(RandomPage,tds[DivCount]);
-    request(ObjectGalleryPage,GetGalleryTag);
+    debug("FillPane");
+    var RandomPage = Math.floor(Math.random() * (1000+1 - 0));
+            //var RandomPage = Math.floor(Math.random() * (TotalPage/ContentPaneChildNum+1 - 0));
+            ObjectGalleryPage=new GalleryPage(RandomPage);
+    debug(ObjectGalleryPage.url);
+    request(ObjectGalleryPage,SearchGallery);
 }
 
-function GetGalleryTag(responseDetails,article) {
+function SearchGallery(responseDetails) {
+    debug("SearchGallery");
+    var responseText=responseDetails.responseText;
+    var dom = new DOMParser().parseFromString(responseText, "text/html");
+    var CurrentContentPane=dom.querySelector('#posts-container');
+    var divs = CurrentContentPane.querySelectorAll('article');
+    debug("divs.length: "+divs.length);
+    DivCount=0;
+    var href = divs[DivCount].querySelector('a').href;
+    ObjectGallery = new Gallery(href,divs);
+    //request(ObjectGallery,GetGalleryTag);
+    GetGalleryTag(null,divs);
+}
+
+function GetGalleryTag(responseDetails,divs) {
     debug("GetGalleryTag");
     try{
-        var responseText=responseDetails.responseText;
-        var dom = new DOMParser().parseFromString(responseText, "text/html");
-        var taglist = dom.querySelector('#sidebar');
-        var links=taglist.querySelectorAll("a.search-tag");
-        var count=0;
-        for(var link of links){
-            var tag=link.innerText;
-            for(var FavTag of FavTags) {
-                if(count>=5||count==FavTags.length){
-                    ContentPane.insertBefore(article,null);
-                    debug("Insert div");
-                    count=0;
-                    FilledChildNum++;
-                    break;
-                }
-                else if (tag == FavTag.trim()) {
-                    //debug("FavTag: " + FavTag);
-                    link.parentNode.className +=" glowbox";
-                    count++;
-                }
-            }
-        }
-
-    }
-    catch(e){
-        debug("Error: "+e);
-    }
-    if(FilledChildNum<ContentPaneChildNum) {
-            if (FavTags.length == 0) {
-                ContentPane.insertBefore(div, null);
-                debug("Insert div");
-                FilledChildNum++;
-            }
-            else {
-                debug("DivCount: " + DivCount);
-                var href = article.querySelector('a').href;
-                ObjectGallery = new Gallery(href, article);
-                request(ObjectGallery, GetGalleryTag);
-                DivCount++;
-            }
-    }
-    else {
-        debug("finish");
-    }
-}
-
-function GetFavTag(){
-    //convert object to array
-    var sortable = [];
-    for (var VisitTag in VisitTags) {
-        sortable.push([VisitTag, VisitTags[VisitTag]]);
-    }
-
-    //sort by reverse
-    sortable.sort(function(a, b) {
-        return a[1] - b[1];
-    }).reverse();
-
+        var div=divs[DivCount];
+        //var responseText=responseDetails.responseText;
+        //var dom = new DOMParser().parseFromString(responseText, "text/html");
+        //var taglist = dom.querySelector('#tag-list');
+        //var links=taglist.querySelectorAll("a.search-tag");
     //shuffle array
     var shuffle=function (sourceArray) {
         for (var i = 0; i < sourceArray.length - 1; i++) {
@@ -224,6 +190,109 @@ function GetFavTag(){
         }
         return sourceArray;
     }
+    
+        var FavCount=parseInt(div.getAttribute("data-fav-count"));
+        if(FavCount>=30){
+        var links=div.getAttribute("data-tags").split(/\s/);
+        var count=0;
+        var Break;
+    FavTags=shuffle(FavTags);
+    debug("FavTags: "+FavTags);
+        for(var link of links){
+            if(FavTags==0){
+                break;
+            }
+            var tag=link;
+            //var tag=link.innerText;
+            for(var FavTag of FavTags) {
+                if(count>=10||count==FavTags.length){
+                    if(!VisitLinks.includes(responseDetails.finalUrl) ){
+                        ContentPane.insertBefore(div,null);
+                        debug("Insert div");
+                        debug("FilledChildNum: "+FilledChildNum);
+                        count=0;
+                        FilledChildNum++;
+                        Break=true;
+                        break;
+
+                    }
+                }
+                else if (tag == FavTag.trim()) {
+                    //debug("FavTag: " + FavTag);
+                    //link.parentNode.className +=" glowbox";
+                    count++;
+                }
+            }
+            if(Break){break;}
+
+        }
+            
+        }
+
+    }
+    catch(e){
+        debug("Error: "+e);
+    }
+    if(FilledChildNum<=ContentPaneChildNum) {
+        if (DivCount < divs.length) {
+            if (FilledChildNum == ContentPaneChildNum) {
+                debug("finish");
+                return;
+            }
+            else if (FavTags.length == 0) {
+                debug("Insert divs");
+                for(div of divs){
+                    ContentPane.insertBefore(div, null);
+                    FilledChildNum++;
+
+                }
+            }
+            else {
+                debug("DivCount: " + DivCount);
+                var href = div.querySelector('a').href;
+                ObjectGallery = new Gallery(href, divs);
+                request(ObjectGallery, GetGalleryTag);
+                DivCount++;
+            }
+        }
+        else {
+            FillPane(TotalPage);
+        }
+    }
+}
+
+function JsonSort(VisitTags,Method){
+    //convert object to array
+    var sortable = [];
+    for (var VisitTag in VisitTags) {
+        if(VisitTag.match(/^\d*$/)==null){
+        sortable.push([VisitTag, VisitTags[VisitTag]]);
+            
+        }
+    }
+    //sort by reverse
+    sortable.sort(function(a, b) {
+        return a[1] - b[1];
+    }).reverse();
+var array;
+if(Method=="shuffle"){
+    //shuffle array
+    var shuffle=function (sourceArray) {
+        for (var i = 0; i < sourceArray.length - 1; i++) {
+            var j = i + Math.floor(Math.random() * (sourceArray.length - i));
+
+            var temp = sourceArray[j];
+            sourceArray[j] = sourceArray[i];
+            sourceArray[i] = temp;
+        }
+        return sourceArray;
+    }
+    array=shuffle;
+    
+}
+    else if (Method=="sort"){
+        array=sortable;
+    }
 
     //convert array to object
     var ArrayToObj=function (sortable){
@@ -233,20 +302,26 @@ function GetFavTag(){
         })
         return VisitTags;
     }
+    
+    return ArrayToObj(array);
+}
 
-    VisitTags=ArrayToObj(sortable);
+function GetFavTag(){
+
+    VisitTags=JsonSort(VisitTags,"sort");
+        debug("VisitTags: "+JSON.stringify(VisitTags));
     var count=0;
     for(var VisitTag of Object.keys(VisitTags)){
         if(VisitTags[VisitTag]==1){
             return;
         }
-        if(!BlackTags.includes(VisitTag.trim())){
+        else if(!BlackTags.includes(VisitTag.trim())){
             FavTags.push(VisitTag);
         }
-        if(count==Math.floor(Object.keys(VisitTags).length/3)) {
+        else if(count==Math.floor(Object.keys(VisitTags).length/3)) {
             //VisitTags too many, need shuffling
             if(VisitTags[VisitTag]>=Math.floor(Object.keys(VisitTags).length/3)){
-                VisitTags=ArrayToObj(shuffle(sortable));
+                VisitTags=JsonSort(VisitTags,"shuffle");
                 GM_setValue("VisitTags",JSON.stringify(VisitTags));
             }
             return;
