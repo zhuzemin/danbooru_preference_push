@@ -194,6 +194,7 @@ function GetGalleryTag(responseDetails,divs) {
         var FavCount=parseInt(div.getAttribute("data-fav-count"));
         if(FavCount>=30){
         var links=div.getAttribute("data-tags").split(/\s/);
+        var href=div.querySelector("a").href;
         var count=0;
         var Break;
     FavTags=shuffle(FavTags);
@@ -205,8 +206,8 @@ function GetGalleryTag(responseDetails,divs) {
             var tag=link;
             //var tag=link.innerText;
             for(var FavTag of FavTags) {
-                if(count>=10||count==FavTags.length){
-                    if(!VisitLinks.includes(responseDetails.finalUrl) ){
+                if(count>=20||count==FavTags.length){
+                    if(!VisitLinks.includes(href) ){
                         ContentPane.insertBefore(div,null);
                         debug("Insert div");
                         debug("FilledChildNum: "+FilledChildNum);
@@ -234,7 +235,7 @@ function GetGalleryTag(responseDetails,divs) {
         debug("Error: "+e);
     }
     if(FilledChildNum<=ContentPaneChildNum) {
-        if (DivCount < divs.length) {
+        if (DivCount < divs.length-1) {
             if (FilledChildNum == ContentPaneChildNum) {
                 debug("finish");
                 return;
@@ -249,10 +250,8 @@ function GetGalleryTag(responseDetails,divs) {
             }
             else {
                 debug("DivCount: " + DivCount);
-                var href = div.querySelector('a').href;
-                ObjectGallery = new Gallery(href, divs);
-                request(ObjectGallery, GetGalleryTag);
                 DivCount++;
+                GetGalleryTag(null,divs);
             }
         }
         else {
@@ -317,14 +316,14 @@ function GetFavTag(){
         }
         else if(!BlackTags.includes(VisitTag.trim())){
             FavTags.push(VisitTag);
-        }
-        else if(count==Math.floor(Object.keys(VisitTags).length/3)) {
-            //VisitTags too many, need shuffling
-            if(VisitTags[VisitTag]>=Math.floor(Object.keys(VisitTags).length/3)){
-                VisitTags=JsonSort(VisitTags,"shuffle");
-                GM_setValue("VisitTags",JSON.stringify(VisitTags));
+            if(count==Math.floor(Object.keys(VisitTags).length/3)) {
+                //VisitTags too many, need shuffling
+                if(VisitTags[VisitTag]>=Math.floor(Object.keys(VisitTags).length/3)){
+                    VisitTags=JsonSort(VisitTags,"shuffle");
+                    GM_setValue("VisitTags",JSON.stringify(VisitTags));
+                }
+                return;
             }
-            return;
         }
         count++;
     }
