@@ -66,10 +66,10 @@ class GalleryPage{
 
 // prepare UserPrefs
 setUserPref(
-    'BlackTags',
+    'BlockTags',
     'multi-work series;translated;original;',
-    'Set BlackTags',
-    `These Tags will not be factor. split with ";". Example: "multi-work series;translated;original;"`,
+    'Set BlockTags',
+    `These Tags will not be factor for recommand. split with ";". Example: multi-work series;translated;original`,
     ','
 );
 
