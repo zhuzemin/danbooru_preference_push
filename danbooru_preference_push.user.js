@@ -1,11 +1,17 @@
 // ==UserScript==
-// @name        danbooru Preference Push
+// @name        danbooru "you may like"
+// @name:zh-CN        danbooru "you may like"
+// @name:zh-TW        danbooru "you may like"
+// @name:ja        danbooru "you may like"
 // @namespace   danbooru_preference_push
 // @supportURL  https://github.com/zhuzemin
-// @description danbooru 偏好推送
+// @description base visit history recommand posts
+// @description:ja base visit history recommand posts
+// @description:zh-TW  base visit history recommand posts
+// @description:zh-CN base visit history recommand posts
 // @include     https://danbooru.donmai.us/
 // @include     https://danbooru.donmai.us/posts/*
-// @version     1.2
+// @version     1.1
 // @grant       GM_xmlhttpRequest
 // @grant         GM_registerMenuCommand
 // @grant         GM_setValue
@@ -14,7 +20,6 @@
 // @author      zhuzemin
 // @license     Mozilla Public License 2.0; http://www.mozilla.org/MPL/2.0/
 // @license     CC Attribution-ShareAlike 4.0 International; http://creativecommons.org/licenses/by-sa/4.0/
-// @connect-src danbooru.donmai.us
 // ==/UserScript==
 var config = {
     'debug': false
@@ -207,7 +212,7 @@ function GetGalleryTag(responseDetails,divs) {
             var tag=link;
             //var tag=link.innerText;
             for(var FavTag of FavTags) {
-                if(count>=20||count==FavTags.length){
+                if(count>=12||count==FavTags.length){
                     if(!VisitLinks.includes(href) ){
                         ContentPane.insertBefore(div,null);
                         debug("Insert div");
