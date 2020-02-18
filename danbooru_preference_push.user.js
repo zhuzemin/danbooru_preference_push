@@ -11,7 +11,7 @@
 // @description:zh-CN base visit history recommand posts
 // @include     https://danbooru.donmai.us/
 // @include     https://danbooru.donmai.us/posts/*
-// @version     1.1
+// @version     1.11
 // @grant       GM_xmlhttpRequest
 // @grant         GM_registerMenuCommand
 // @grant         GM_setValue
@@ -20,6 +20,7 @@
 // @author      zhuzemin
 // @license     Mozilla Public License 2.0; http://www.mozilla.org/MPL/2.0/
 // @license     CC Attribution-ShareAlike 4.0 International; http://creativecommons.org/licenses/by-sa/4.0/
+// @connect-src danbooru.donmai.us
 // ==/UserScript==
 var config = {
     'debug': false
